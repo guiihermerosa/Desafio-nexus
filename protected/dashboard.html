@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="/js/dashboard.js" defer></script>
+  <link rel="stylesheet" href="/styles/dashboard.css">
+  <title>Dashboard</title>
+</head>
+<body>
+  <header>
+    <div class="text">
+      <h1>Dashboard</h1>
+      <p id="user-name">Welcome, <span id="username">!</span></p>
+    </div>
+    <div class="dropdown-menu">
+      <button class="dropbtn" id="buttondrop">Menu</button>
+      <div class="dropdown-content">
+        <a href="/profile">Profile</a>
+        <a href="/settings">Settings</a>
+        <a href="/history">History</a>
+        <a href="/help">Help</a>
+      </div>
+    </div>
+    <p class="logout"> <button onclick="window.location.href='/index.html'">Logout</button></p>
+  </header>
+  <main>
+    <div class="grafico">
+      <h2>Gráfico de Preços</h2>
+      <canvas id="myChart"></canvas>
+    </div>
+    <div class="cards">
+      <div class="favoritos">
+        <p>Favoritos</p>
+        <ul id="favorites-list">
+
+        </ul>
+      </div>
+      <div class="calcularcripto">
+        <h2>Selecione Criptomoedas</h2>
+        <label for="amount">Valor em Criptomoeda:</label>
+        <input type="number" id="amount" step="any" placeholder="Digite o valor..." />
+        <div class="crypto-list" id="crypto-list">Carregando criptomoedas...</div>
+        <button id="convert-btn">Converter para USD e BRL</button>
+        <div class="results" id="results"></div>
+      </div>
+    </div>
+  </main>
+</body>
+</html>
