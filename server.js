@@ -172,7 +172,7 @@ app.get('/history', authMiddleware, (req, res) => {
       console.error('Erro ao buscar histórico:', err);
       return res.status(500).json({ error: 'Erro ao buscar histórico' });
     }
-
+    console.log('Histórico de conversões:', results);
     res.json({ history: results });
   });
 });
