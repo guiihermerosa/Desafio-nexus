@@ -25,44 +25,38 @@ function authMiddleware(req, res, next) {
   }
 }
 
-
 app.use(express.static(path.join(__dirname, "public")));
 
 // Rota de login
-app.post("/login", (req, res) => {
+app.post("/login", async (req, res) => {
   const { username, password } = req.body;
 
   const query = "SELECT * FROM users WHERE username = ?";
-  db.query(query, [username], (err, results) => {
-    if (err) {
-      console.error("Erro no servidor:", err);
-      return res.status(500).json({ success: false, message: "Erro no servidor." });
-    }
+  try {
+    const [results] = await db.query(query, [username]);
     if (results.length === 0) {
       console.log("Usuário não encontrado.");
       return res.json({ success: false, message: "Usuário não encontrado." });
     }
 
     const user = results[0];
-    bcrypt.compare(password, user.password, (err, match) => {
-      if (err) {
-        console.error("Erro ao comparar senha:", err);
-        return res.status(500).json({ success: false });
-      }
-      if (!match) {
-        console.log("Senha incorreta.");
-        return res.json({ success: false, message: "Senha incorreta." });
-      }
+    const match = await bcrypt.compare(password, user.password);
+    if (!match) {
+      console.log("Senha incorreta.");
+      return res.json({ success: false, message: "Senha incorreta." });
+    }
 
-      req.session.userId = user.id;
-      console.log("Login bem-sucedido");
-      res.json({ success: true });
-    });
-  });
+    req.session.userId = user.id;
+    console.log("Login bem-sucedido");
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Erro no servidor:", err);
+    return res.status(500).json({ success: false, message: "Erro no servidor." });
+  }
 });
 
 // Rota de registro
-app.post("/register", (req, res) => {
+app.post("/register", async (req, res) => {
   const { name, email, username, password, birthdate } = req.body;
 
   const birth = new Date(birthdate);
@@ -73,70 +67,93 @@ app.post("/register", (req, res) => {
   }
 
   const checkQuery = "SELECT id FROM users WHERE username = ? OR email = ?";
-  db.query(checkQuery, [username, email], (err, results) => {
-    if (err) return res.status(500).json({ success: false, message: "Erro no servidor." });
-
+  try {
+    const [results] = await db.query(checkQuery, [username, email]);
     if (results.length > 0) {
       return res.json({ success: false, message: "Usuário ou email já cadastrado." });
     }
 
-    bcrypt.hash(password, 10, (err, hashedPassword) => {
-      if (err) return res.status(500).json({ success: false, message: "Erro ao criptografar senha." });
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-      const insertQuery = "INSERT INTO users (name, email, username, password, birthdate) VALUES (?, ?, ?, ?, ?)";
-      db.query(insertQuery, [name, email, username, hashedPassword, birthdate], (err) => {
-        if (err) return res.status(500).json({ success: false, message: "Erro ao cadastrar." });
+    const insertQuery = "INSERT INTO users (name, email, username, password, birthdate) VALUES (?, ?, ?, ?, ?)";
+    await db.query(insertQuery, [name, email, username, hashedPassword, birthdate]);
 
-        res.json({ success: true });
-      });
-    });
-  });
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Erro no servidor:", err);
+    res.status(500).json({ success: false, message: "Erro no servidor." });
+  }
 });
 
-app.get("/user", authMiddleware, (req, res) => {
+app.get("/user", authMiddleware, async (req, res) => {
   const userId = req.session.userId;
 
   // Buscar os dados do usuário no banco de dados
   const query = "SELECT name FROM users WHERE id = ?";
-  db.query(query, [userId], (err, results) => {
-    if (err) {
-      return res.status(500).json({ success: false, message: "Erro no servidor." });
-    }
+  try {
+    const [results] = await db.query(query, [userId]);
     if (results.length === 0) {
       return res.status(404).json({ success: false, message: "Usuário não encontrado." });
     }
 
     const user = results[0];
     res.json({ success: true, name: user.name });
-  });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: "Erro no servidor." });
+  }
 });
 
-app.post("/favorites", authMiddleware, (req, res) => {
+app.post('/favorites', async (req, res) => {
+  const { cryptoId, cryptoSymbol } = req.body;
   const userId = req.session.userId;
-  const { cryptoId } = req.body;
-  const { cryptoSymbol } = req.body;
-   //enviando para o banco de dados
-  const query = "INSERT INTO favorites (user_id, crypto_id, symbol) VALUES (?, ?, ?)";
-  db.query(query, [userId, cryptoId, cryptoSymbol], (err) => {
-    
-    if (err) {
-      console.error("Erro ao adicionar favorito:", err);
-      return res.status(500).json({ success: false, message: "Erro ao adicionar favorito." });
-    }
-    console.log("Favorito adicionado com sucesso!");
-    res.json({ success: true }); 
-  });
- });
 
+  if (!userId) {
+    return res.status(401).json({ success: false, message: 'Não autenticado' });
+  }
+
+  const checkQuery = 'SELECT * FROM favorites WHERE user_id = ? AND crypto_id = ?';
+  try {
+    const [results] = await db.query(checkQuery, [userId, cryptoId]);
+    if (results.length > 0) {
+      return res.json({ success: false, message: 'Já está como favorito' });
+    }
+
+    const insertQuery = 'INSERT INTO favorites (user_id, crypto_id, crypto_symbol) VALUES (?, ?, ?)';
+    await db.query(insertQuery, [userId, cryptoId, cryptoSymbol]);
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Erro ao verificar ou inserir favorito:', err);
+    return res.status(500).json({ success: false, message: 'Erro interno' });
+  }
+});
+
+app.get('/favorites', async (req, res) => {
+  const userId = req.session.userId;
+
+  if (!userId) {
+    return res.status(401).json({ success: false, message: 'Não autenticado' });
+  }
+
+  try {
+    const [favoritas] = await db.query(
+      'SELECT crypto_id, crypto_symbol FROM favorites WHERE user_id = ?',
+      [userId]
+    );
+
+    res.json({ success: true, data: favoritas });
+  } catch (error) {
+    console.error('Erro ao buscar favoritas:', error);
+    res.status(500).json({ success: false, message: 'Erro interno' });
+  }
+});
 
 app.get("/dashboard", authMiddleware, (req, res) => {
   res.sendFile(path.join(__dirname, "protected", "dashboard.html"));
 });
 
-app.post("/convert", authMiddleware, (req, res) => {
-  console.log("Sessão atual:", req.session);
+app.post("/convert", authMiddleware, async (req, res) => {
   const user_id = req.session.userId;
-
   const { crypto_name, crypto_price, converted_to = "USD" } = req.body;
 
   if (!user_id || !crypto_name || !crypto_price) {
@@ -148,16 +165,16 @@ app.post("/convert", authMiddleware, (req, res) => {
     VALUES (?, ?, ?, ?)
   `;
 
-  db.query(query, [user_id, crypto_name, crypto_price, converted_to], (err) => {
-    if (err) {
-      console.error("Erro ao salvar conversão:", err);
-      return res.status(500).json({ success: false, message: "Erro no servidor." });
-    }
-
+  try {
+    await db.query(query, [user_id, crypto_name, crypto_price, converted_to]);
     res.json({ success: true, message: "Conversão salva com sucesso." });
-  });
+  } catch (err) {
+    console.error("Erro ao salvar conversão:", err);
+    return res.status(500).json({ success: false, message: "Erro no servidor." });
+  }
 });
-app.get('/history', authMiddleware, (req, res) => {
+
+app.get('/history', authMiddleware, async (req, res) => {
   const userId = req.session.userId;
 
   const query = `
@@ -167,14 +184,14 @@ app.get('/history', authMiddleware, (req, res) => {
     ORDER BY date DESC
   `;
 
-  db.query(query, [userId], (err, results) => {
-    if (err) {
-      console.error('Erro ao buscar histórico:', err);
-      return res.status(500).json({ error: 'Erro ao buscar histórico' });
-    }
+  try {
+    const [results] = await db.query(query, [userId]);
     console.log('Histórico de conversões:', results);
     res.json({ history: results });
-  });
+  } catch (err) {
+    console.error('Erro ao buscar histórico:', err);
+    return res.status(500).json({ error: 'Erro ao buscar histórico' });
+  }
 });
 
 // Inicialização do servidor

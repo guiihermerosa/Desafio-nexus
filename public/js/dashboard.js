@@ -34,7 +34,7 @@ async function fetchCoinsWithIcons() {
     const div = document.createElement("label");
     div.className = "crypto-item";
     div.innerHTML = `
-      <span class="favorite-star" data-id="${coin.name}" data-symbol="${coin.image}" style="margin-left:auto;cursor:pointer;">☆</span>
+      <span class="favorite-star" data-id="${coin.id}" data-symbol="${coin.symbol}" style="margin-left:auto;cursor:pointer;">☆</span>
       <input type="checkbox" value="${coin.id}" />
       <img src="${coin.image}" alt="${coin.name}" />
       ${coin.name} (${coin.symbol.toUpperCase()})
@@ -46,6 +46,10 @@ async function fetchCoinsWithIcons() {
     star.addEventListener("click", async () => {
       const cryptoId = star.getAttribute("data-id");
       const cryptoSymbol = star.getAttribute("data-symbol");
+      
+      // Alterna o ícone da estrela
+      star.textContent = star.textContent === "★" ? "☆" : "★";
+      
       fetch("/favorites", {
         method: "POST",
         headers: {
@@ -56,19 +60,48 @@ async function fetchCoinsWithIcons() {
         .then(response => response.json())
         .then(data => {
           if (data.success) {
-            
             console.log("Favorito adicionado com sucesso!");
           } else {
             console.error("Erro ao adicionar favorito:", data.message);
           }
         })
         .catch(error => console.error("Erro ao fazer requisição:", error));
-     
-
-      star.textContent = star.textContent === "★" ? "☆" : "★";
     });
   });
 }
+
+async function carregarFavoritasDoUsuario() {
+  try {
+    const response = await fetch('/favorites');
+    const resultado = await response.json();
+
+    if (!resultado.success) return;
+
+    const ids = resultado.data.map(m => m.crypto_id);
+    if (ids.length === 0) return;
+
+    const url = `https://api.coingecko.com/api/v3/simple/price?ids=${ids.join(',')}&vs_currencies=brl`;
+    const dados = await (await fetch(url)).json();
+
+    const lista = document.getElementById('favorites-list');
+    lista.innerHTML = '';
+
+    resultado.data.forEach(crypto => {
+      const preco = dados[crypto.crypto_id]?.brl?.toLocaleString('pt-BR', {
+        style: 'currency', currency: 'BRL'
+      }) || 'N/A';
+
+      const li = document.createElement('li');
+      li.innerHTML = `<strong>${crypto.crypto_symbol.toUpperCase()}</strong>: ${preco}`;
+      lista.appendChild(li);
+    });
+  } catch (err) {
+    console.error('Erro ao carregar favoritas:', err);
+  }
+}
+
+carregarFavoritasDoUsuario();
+setInterval(carregarFavoritasDoUsuario, 60000); // Atualiza a cada 1 minuto
 
 async function convertSelected() {
   const amount = parseFloat(document.getElementById("amount").value);
@@ -118,3 +151,58 @@ async function convertSelected() {
 
 document.getElementById("convert-btn").addEventListener("click", convertSelected);
 fetchCoinsWithIcons();
+
+document.addEventListener("DOMContentLoaded", async () => {
+  const ctx = document.getElementById('cryptoChart').getContext('2d');
+
+  const fetchPrices = async (coinId) => {
+    const res = await fetch(`https://api.coingecko.com/api/v3/coins/${coinId}/market_chart?vs_currency=usd&days=7`);
+    const data = await res.json();
+    return data.prices.map(p => ({
+      time: new Date(p[0]).toLocaleDateString(),
+      price: p[1]
+    }));
+  };
+
+  const [btcData, ethData] = await Promise.all([
+    fetchPrices("bitcoin"),
+    fetchPrices("ethereum")
+  ]);
+
+  const labels = btcData.map(p => p.time); // Datas
+
+  const chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Bitcoin (BTC)',
+          data: btcData.map(p => p.price),
+          borderColor: 'orange',
+          fill: false
+        },
+        {
+          label: 'Ethereum (ETH)',
+          data: ethData.map(p => p.price),
+          borderColor: 'purple',
+          fill: false
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        title: {
+          display: true,
+          text: 'Variação de preço - Últimos 7 dias'
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: false
+        }
+      }
+    }
+  });
+});

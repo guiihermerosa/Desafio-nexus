@@ -1,28 +1,113 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>History</title>
+    <meta charset="UTF-8">
+    <title>Histórico de Conversões</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f4f4;
+            padding: 40px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #fff;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+
+        thead {
+            background-color: #007BFF;
+            color: white;
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        tr:hover {
+            background-color: #f1f1f1;
+        }
+
+        .loading {
+            text-align: center;
+            margin: 20px 0;
+        }
+    </style>
 </head>
 <body>
-  <div class="container">
-    <a href="/" class="btn">Voltar</a>
-    <table id="historyTable">
-        <thead>
-            <tr>
-                <th>Cripto Nome</th>
-                <th>Preço (em moeda original)</th>
-                <th>Convertido Para</th>
-                <th>Data</th>
-            </tr>
-        </thead>
-        <tbody>
-           
-        </tbody>
-    </table>
-</div>
 
+<h1>Histórico de Conversões</h1>
+
+<div class="loading" id="loading">Carregando...</div>
+
+<table id="historyTable" style="display: none;">
+    <thead>
+        <tr>
+            <th>Criptomoeda</th>
+            <th>Preço (BRL)</th>
+            <th>Convertido para</th>
+            <th>Data</th>
+        </tr>
+    </thead>
+    <tbody>
+        <!-- Conteúdo será inserido via JavaScript -->
+    </tbody>
+</table>
+
+<script>
+    fetch('/history')
+    .then(response => response.json())
+    .then(data => {
+        const table = document.getElementById("historyTable");
+        const tableBody = table.querySelector("tbody");
+        const loading = document.getElementById("loading");
+
+        loading.style.display = "none";
+        table.style.display = "table";
+
+        if (!data.history || !Array.isArray(data.history)) {
+            console.error("Formato de resposta inválido:", data);
+            return;
+        }
+
+        // Limpa a tabela
+        tableBody.innerHTML = "";
+
+        data.history.forEach(item => {
+            const date = new Date(item.date);
+            const formattedDate = date.toLocaleString('pt-BR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+
+            const row = document.createElement("tr");
+            row.innerHTML = `
+                <td>${item.crypto_name}</td>
+                <td>R$ ${parseFloat(item.crypto_price).toFixed(2)}</td>
+                <td>${item.converted_to}</td>
+                <td>${formattedDate}</td>
+            `;
+            tableBody.appendChild(row);
+        });
+    })
+    .catch(error => {
+        document.getElementById("loading").innerText = "Erro ao carregar os dados.";
+        console.error("Erro ao buscar histórico:", error);
+    });
+</script>
 
 </body>
 </html>

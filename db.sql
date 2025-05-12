@@ -19,3 +19,13 @@ CREATE TABLE conversion_history (
 );
 ALTER TABLE conversion_history
 MODIFY COLUMN date DATETIME DEFAULT CURRENT_TIMESTAMP;
+
+
+CREATE TABLE favorites (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  crypto_id VARCHAR(100) NOT NULL,
+  crypto_symbol VARCHAR(50),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);

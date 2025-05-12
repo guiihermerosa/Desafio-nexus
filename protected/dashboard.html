@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="/js/dashboard.js" defer></script>
   <link rel="stylesheet" href="/styles/dashboard.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
   <title>Dashboard</title>
 </head>
 <body>
@@ -18,24 +20,27 @@
       <div class="dropdown-content">
         <a href="/profile">Profile</a>
         <a href="/settings">Settings</a>
-        <a href="/history">History</a>
+        <a href="/history.html">History</a>
         <a href="/help">Help</a>
       </div>
     </div>
     <p class="logout"> <button onclick="window.location.href='/index.html'">Logout</button></p>
   </header>
   <main>
+    <div class="container">
+     
     <div class="grafico">
       <h2>Gráfico de Preços</h2>
-      <canvas id="myChart"></canvas>
+      <canvas id="cryptoChart" width="600" height="400"></canvas>
     </div>
-    <div class="cards">
+    
       <div class="favoritos">
         <p>Favoritos</p>
         <ul id="favorites-list">
 
         </ul>
       </div>
+    </div>
       <div class="calcularcripto">
         <h2>Selecione Criptomoedas</h2>
         <label for="amount">Valor em Criptomoeda:</label>
@@ -44,7 +49,7 @@
         <button id="convert-btn">Converter para USD e BRL</button>
         <div class="results" id="results"></div>
       </div>
-    </div>
+    
   </main>
 </body>
 </html>
